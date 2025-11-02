@@ -288,8 +288,7 @@ def statistical_calc(obj1, obj2):
     sid = np.sum(pa * np.log((pa + eps) / (pb + eps)) + pb * np.log((pb + eps) / (pa + eps)))
     scc = np.corrcoef(a, b)[0, 1]
     euclidean = np.linalg.norm(a - b)
-    manhattan = np.sum(np.abs(a - b))
-    mae = np.mean(np.abs(a - b))
+
 
     # === Combine metrics into similarity score ===
     # Normalize and invert where needed (lower is better → higher score)
