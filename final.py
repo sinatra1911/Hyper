@@ -257,10 +257,8 @@ def compute_metrics(mean1, mean2):
         corr = np.corrcoef(a, b)[0, 1]
 
     euc = np.linalg.norm(a - b)
-    man = np.sum(np.abs(a - b))
-    mae = np.mean(np.abs(a - b))
 
-    return dict(SAM=sam, SID=sid, Corr=corr, Euclid=euc, Man=man, MAE=mae)
+    return dict(SAM=sam, SID=sid, Corr=corr, Euclid=euc)
 
 
 def collect_spectra_for_stat(obj):
@@ -423,9 +421,8 @@ def update_stat_plots():
                f"SAM: {metrics['SAM']:.3f}°\n"
                f"SID: {metrics['SID']:.4f}\n"
                f"Correlation: {metrics['Corr']:.3f}\n"
-               f"Euclidean: {metrics['Euclid']:.3f}\n"
-               f"Manhattan: {metrics['Man']:.3f}\n"
-               f"MAE: {metrics['MAE']:.3f}")
+               f"Euclidean: {metrics['Euclid']:.3f}\n")
+
     ax_metrics.text(0.05, 0.95, txt, va="top", ha="left", fontsize=10,
                     bbox=dict(boxstyle="round", fc="khaki", alpha=0.7))
 
