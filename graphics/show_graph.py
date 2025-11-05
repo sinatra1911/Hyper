@@ -233,9 +233,6 @@ def clear_all(event):
     fig.canvas.draw_idle()
     print("✅ Cleared all points.")
 
-def statistical_calc():
-    pass
-
 # === Widgets ===
 axbox = plt.axes([0.20, 0.03, 0.15, 0.05])
 text_box = TextBox(axbox, "Pixel (x,y): ", initial="")
@@ -244,10 +241,6 @@ text_box.on_submit(submit)
 axclear = plt.axes([0.60, 0.03, 0.15, 0.05])
 clear_button = Button(axclear, "Clear All")
 clear_button.on_clicked(clear_all)
-
-ax_stat = plt.axes([0.40, 0.03, 0.15, 0.05])
-statistic_button = Button(ax_stat, "Statistic calculation")
-statistic_button.on_clicked(statistical_calc)
 
 # === Connect only press events ===
 fig.canvas.mpl_connect('button_press_event', onclick)

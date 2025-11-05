@@ -294,7 +294,7 @@ def statistical_calc(obj1, obj2):
     # Normalize and invert where needed (lower is better → higher score)
     sam_score = np.exp(-sam * 5)       # smaller angle = higher score
     sid_score = np.exp(-sid * 2)
-    scc_score = (scc + 1) / 2          # -1..1 → 0..1
+    scc_score = scc
     euc_score = np.exp(-euclidean * 3)
 
     # Weighted combination (tweak weights as you like)
@@ -311,8 +311,6 @@ def statistical_calc(obj1, obj2):
         "SID": sid,
         "SCC": scc,
         "Euclidean": euclidean,
-        "Manhattan": manhattan,
-        "MAE": mae,
     }
 
     def sim_color(val, invert=False):
@@ -341,7 +339,7 @@ def statistical_calc(obj1, obj2):
         elif name == "SAM (rad)":
             color = sim_color(np.exp(-val), invert=True)
         else:
-            norm_val = np.exp(-val / np.max([euclidean, manhattan, mae, 1e-6]))
+            norm_val = np.exp(-val / np.max([euclidean, 1e-6]))
             color = sim_color(norm_val)
         axes[3].text(
             0.05, y_positions[i], f"{name}: {val:.4f}",

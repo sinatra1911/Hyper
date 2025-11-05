@@ -8,7 +8,8 @@ from matplotlib.widgets import Button, RadioButtons
 
 # === Load hyperspectral image ===
 # NOTE: Replace with a valid path to an accessible .hdr file
-image_path = r"C:\Users\Public\HyperData\BEIT_JAMAL\40m_try\vnir\raw_76000_rd_rf.hdr"
+# image_path = r"C:\Users\Public\HyperData\BEIT_JAMAL\40m_try\vnir\raw_76000_rd_rf.hdr"
+image_path = r"D:\Hyper_Data\Aderet_2_4_24\50m\vnir\spectralview\100119_Aderet_2_4_24_50M_2024_04_02_08_36_30\22303\raw_22303_rd_rf.hdr"
 try:
     # Use 'spectral' to open the image. If this fails, we use dummy data.
     img = spy.open_image(image_path).load()
@@ -293,14 +294,13 @@ def setup_stat_figure(labels):
 
     stat_fig = plt.figure(figsize=(15, 8))
     gs = stat_fig.add_gridspec(3, 5, width_ratios=[1, 1, 1, 0.8, 0.8],
-                               height_ratios=[1.6, 1, 1])
+                               height_ratios=[1, 1, 0])
 
     stat_axes['ax1'] = stat_fig.add_subplot(gs[0:2, 0])
     stat_axes['ax2'] = stat_fig.add_subplot(gs[0:2, 1])
     stat_axes['ax3'] = stat_fig.add_subplot(gs[0:2, 2])
     stat_axes['ax_metrics'] = stat_fig.add_subplot(gs[0, 3:])
-    stat_axes['ax_scope'] = stat_fig.add_subplot(gs[1, 3:])
-    stat_axes['ax_norm'] = stat_fig.add_subplot(gs[2, 3:])
+    stat_axes['ax_norm'] = stat_fig.add_subplot(gs[1, 3:])
 
     stat_fig.subplots_adjust(left=0.07, right=0.96, wspace=0.35, hspace=0.6)
 
@@ -311,25 +311,15 @@ def setup_stat_figure(labels):
         ax.grid(True)
 
     stat_axes['labels'] = labels
-    stat_axes['current_scope'] = ["Separate"]
     stat_axes['current_norm'] = ["Min–Max"]
     stat_axes['objects'] = None
 
     # === Radio Button Callbacks (Defined to use the global stat_axes state) ===
-    def change_scope(label):
-        stat_axes['current_scope'][0] = "Separate" if "Separately" in label else "Together"
-        update_stat_plots()
 
     def change_norm(label):
         # *** CRITICAL FIX: Update the global state variable
         stat_axes['current_norm'][0] = label
         update_stat_plots()
-
-    # ---------- Scope radio ----------
-    stat_axes['ax_scope'].set_title("Scope Selection", fontsize=11)
-    stat_axes['scope_radio'] = RadioButtons(stat_axes['ax_scope'],
-                                            ["Normalize Separately", "Normalize Together"], active=0)
-    stat_axes['scope_radio'].on_clicked(change_scope)  # Widget reference is stored in stat_axes
 
     # ---------- Normalization radio ----------
     stat_axes['ax_norm'].set_title("Normalization", fontsize=11)
@@ -346,7 +336,6 @@ def update_stat_plots():
 
     objects = stat_axes['objects']
     labels = stat_axes['labels']
-    current_scope = stat_axes['current_scope'][0]
     current_norm = stat_axes['current_norm'][0]
 
     objA, objB = objects[0], objects[1]
@@ -365,13 +354,8 @@ def update_stat_plots():
         return
 
     # Normalization logic
-    if current_scope == "Separate":
-        A_norm = normalize_array(A, current_norm)
-        B_norm = normalize_array(B, current_norm)
-    else:
-        joined = np.vstack((A, B))
-        joined = normalize_array(joined, current_norm)
-        A_norm, B_norm = joined[:len(A)], joined[len(A):]
+    A_norm = normalize_array(A, current_norm)
+    B_norm = normalize_array(B, current_norm)
 
     meanA, stdA = np.mean(A_norm, axis=0), np.std(A_norm, axis=0)
     meanB, stdB = np.mean(B_norm, axis=0), np.std(B_norm, axis=0)
@@ -383,8 +367,8 @@ def update_stat_plots():
     ax1.plot(wavelengths, meanA, color='darkorange', linewidth=2.2)
     ax1.fill_between(wavelengths, meanA - stdA, meanA + stdA, color='orange', alpha=0.2)
     ax1.set_title(f"{labels[0]} ({current_norm})")
-    ax1.set_xlabel("Wavelength (nm)");
-    ax1.set_ylabel("Reflectance");
+    ax1.set_xlabel("Wavelength (nm)")
+    ax1.set_ylabel("Reflectance")
     ax1.grid(True)
 
     # Re-plot Object B (ax2)
@@ -394,8 +378,8 @@ def update_stat_plots():
     ax2.plot(wavelengths, meanB, color='navy', linewidth=2.2)
     ax2.fill_between(wavelengths, meanB - stdB, meanB + stdB, color='blue', alpha=0.2)
     ax2.set_title(f"{labels[1]} ({current_norm})")
-    ax2.set_xlabel("Wavelength (nm)");
-    ax2.set_ylabel("Reflectance");
+    ax2.set_xlabel("Wavelength (nm)")
+    ax2.set_ylabel("Reflectance")
     ax2.grid(True)
 
     # Re-plot Comparison (ax3)
@@ -406,8 +390,8 @@ def update_stat_plots():
     ax3.fill_between(wavelengths, meanB - stdB, meanB + stdB, color='blue', alpha=0.1)
     ax3.set_title("Mean Spectra Comparison")
     ax3.legend()
-    ax3.set_xlabel("Wavelength (nm)");
-    ax3.set_ylabel("Reflectance");
+    ax3.set_xlabel("Wavelength (nm)")
+    ax3.set_ylabel("Reflectance")
     ax3.grid(True)
 
     # Update Metrics (ax_metrics)
