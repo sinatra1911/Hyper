@@ -1,0 +1,6 @@
+spectral
+numpy
+matplotlib
+scipy
+scikit-learn
+requests

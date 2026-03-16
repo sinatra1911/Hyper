@@ -8,10 +8,10 @@ from matplotlib.widgets import Button, RadioButtons
 
 # === Load hyperspectral image ===
 # NOTE: Replace with a valid path to an accessible .hdr file
-# image_path = r"C:\Users\Public\HyperData\BEIT_JAMAL\40m_try\vnir\raw_76000_rd_rf.hdr"
+image_path = r"C:\Users\Public\HyperData\BEIT_JAMAL\40m_try\vnir\raw_76000_rd_rf.hdr"
 # image_path = r"D:\Hyper_Data\Aderet_2_4_24\50m\vnir\spectralview\100119_Aderet_2_4_24_50M_2024_04_02_08_36_30\22303\raw_22303_rd_rf.hdr" # vnir 50m
 # image_path = r"D:\Hyper_Data\Aderet_2_4_24\50m\swir\spectralview\22256\raw_22256_rd_rf.hdr" # swir 50m
-image_path = r"E:\Hyper_Data\Aderet_2_4_24\100m\vnir\spectralview\100123_78910_2024_04_02_09_52_04\raw_7024_rd_rf.hdr" # vnir 100m
+# image_path = r"E:\Hyper_Data\Aderet_2_4_24\100m\vnir\spectralview\100123_78910_2024_04_02_09_52_04\raw_7024_rd_rf.hdr" # vnir 100m
 # image_path = r"D:\Hyper_Data\Aderet_2_4_24\100m\swir\spectralview\100134_78910_2024_04_02_09_52_05\raw_7049_rd_rf.hdr" # swir 100m
 try:
     # Use 'spectral' to open the image. If this fails, we use dummy data.
@@ -444,41 +444,42 @@ def show_stat_calc(event):
 
 # --- MAIN FIGURE AND WIDGETS ---
 
-# === Figure setup ===
-fig, (ax_img, ax_spec) = plt.subplots(1, 2, figsize=(13, 7))
-plt.subplots_adjust(bottom=0.15)
-ax_img.imshow(rgb)
-ax_img.set_title("Shift+Left Click = Add | Right Click once = Select | Right Click again = Move")
-ax_img.axis("off")
+if __name__ == "__main__":
+    # === Figure setup ===
+    fig, (ax_img, ax_spec) = plt.subplots(1, 2, figsize=(13, 7))
+    plt.subplots_adjust(bottom=0.15)
+    ax_img.imshow(rgb)
+    ax_img.set_title("Shift+Left Click = Add | Right Click once = Select | Right Click again = Move")
+    ax_img.axis("off")
 
-ax_spec.set_title("Reflectance Spectra")
-ax_spec.set_xlabel("Wavelength (nm)")
-ax_spec.set_ylabel("Reflectance")
-ax_spec.grid(True)
+    ax_spec.set_title("Reflectance Spectra")
+    ax_spec.set_xlabel("Wavelength (nm)")
+    ax_spec.set_ylabel("Reflectance")
+    ax_spec.grid(True)
 
-# === Tooltip ===
-tooltip = ax_img.annotate(
-    "", xy=(0, 0), xytext=(10, 10), textcoords="offset points",
-    bbox=dict(boxstyle="round,pad=0.3", fc="yellow", alpha=0.8),
-    arrowprops=dict(arrowstyle="->")
-)
-tooltip.set_visible(False)
+    # === Tooltip ===
+    tooltip = ax_img.annotate(
+        "", xy=(0, 0), xytext=(10, 10), textcoords="offset points",
+        bbox=dict(boxstyle="round,pad=0.3", fc="yellow", alpha=0.8),
+        arrowprops=dict(arrowstyle="->")
+    )
+    tooltip.set_visible(False)
 
-# === Widgets (MUST be defined and stored as variables before plt.show()) ===
-axbox1 = plt.axes([0.20, 0.03, 0.15, 0.05])
-object_button1 = Button(axbox1, "Save Object 1 & Clear")
-object_button1.on_clicked(lambda event: take_object(event, 1))
+    # === Widgets (MUST be defined and stored as variables before plt.show()) ===
+    axbox1 = plt.axes([0.20, 0.03, 0.15, 0.05])
+    object_button1 = Button(axbox1, "Save Object 1 & Clear")
+    object_button1.on_clicked(lambda event: take_object(event, 1))
 
-axbox2 = plt.axes([0.40, 0.03, 0.15, 0.05])
-statistic_button = Button(axbox2, "Statistic Calculation")
-statistic_button.on_clicked(show_stat_calc)
+    axbox2 = plt.axes([0.40, 0.03, 0.15, 0.05])
+    statistic_button = Button(axbox2, "Statistic Calculation")
+    statistic_button.on_clicked(show_stat_calc)
 
-axbox3 = plt.axes([0.60, 0.03, 0.15, 0.05])
-object_button2 = Button(axbox3, "Save Object 2 & Clear")
-object_button2.on_clicked(lambda event: take_object(event, 2))
+    axbox3 = plt.axes([0.60, 0.03, 0.15, 0.05])
+    object_button2 = Button(axbox3, "Save Object 2 & Clear")
+    object_button2.on_clicked(lambda event: take_object(event, 2))
 
-# === Connect event handlers ===
-fig.canvas.mpl_connect('button_press_event', onclick)
+    # === Connect event handlers ===
+    fig.canvas.mpl_connect('button_press_event', onclick)
 
-# === Final Display ===
-plt.show()
+    # === Final Display ===
+    plt.show()
