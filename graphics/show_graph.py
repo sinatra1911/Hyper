@@ -112,6 +112,8 @@ def plot_spectrum(x, y, color=None):
         color_index += 1
     spectrum = np.squeeze(img[y, x, :])
     line, = ax_spec.plot(wavelengths, spectrum, color=color, label=f"({x},{y})")
+    line, = ax_spec.plot(wavelengths, spectrum / np.sum(spectrum), color=color, label=f"prob of ({x},{y})") # prob vector representation
+    print(f"{np.sum(spectrum / np.sum(spectrum))} \n {np.mean(spectrum / np.sum(spectrum))}")
     marker, = ax_img.plot([x], [y], 'o', color=color, markersize=6, markeredgecolor='white')
     points.append({'x': x, 'y': y, 'marker': marker, 'line': line, 'color': color})
     ax_spec.legend(title="Pixel (x,y)", loc='upper right')

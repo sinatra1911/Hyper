@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, RadioButtons
 
 # === Load hyperspectral image ===
-# image_path = r"D:\Hyper_Data\Aderet_2_4_24\50m\swir\spectralview\14230\raw_14230_rd_rf.hdr"
-image_path = r"C:\Users\Public\HyperData\BEIT_JAMAL\40m_try\vnir\raw_76000_rd_rf.hdr"
+image_path = r"D:\Hyper_Data\Aderet_2_4_24\50m\swir\spectralview\14230\raw_14230_rd_rf.hdr"
+# image_path = r"C:\Users\Public\HyperData\BEIT_JAMAL\40m_try\vnir\raw_76000_rd_rf.hdr"
 img = spy.open_image(image_path).load()
 
 # === Wavelengths and RGB composite ===

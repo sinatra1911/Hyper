@@ -9,10 +9,7 @@ from matplotlib.widgets import Button, RadioButtons
 # === Load hyperspectral image ===
 # NOTE: Replace with a valid path to an accessible .hdr file
 # image_path = r"C:\Users\Public\HyperData\BEIT_JAMAL\40m_try\vnir\raw_76000_rd_rf.hdr"
-# image_path = r"D:\Hyper_Data\Aderet_2_4_24\50m\vnir\spectralview\100119_Aderet_2_4_24_50M_2024_04_02_08_36_30\22303\raw_22303_rd_rf.hdr" # vnir 50m
-# image_path = r"D:\Hyper_Data\Aderet_2_4_24\50m\swir\spectralview\22256\raw_22256_rd_rf.hdr" # swir 50m
-image_path = r"E:\Hyper_Data\Aderet_2_4_24\100m\vnir\spectralview\100123_78910_2024_04_02_09_52_04\raw_7024_rd_rf.hdr" # vnir 100m
-# image_path = r"D:\Hyper_Data\Aderet_2_4_24\100m\swir\spectralview\100134_78910_2024_04_02_09_52_05\raw_7049_rd_rf.hdr" # swir 100m
+image_path = r"D:\Hyper_Data\Aderet_2_4_24\50m\vnir\spectralview\100119_Aderet_2_4_24_50M_2024_04_02_08_36_30\22303\raw_22303_rd_rf.hdr"
 try:
     # Use 'spectral' to open the image. If this fails, we use dummy data.
     img = spy.open_image(image_path).load()
@@ -288,7 +285,10 @@ def collect_spectra_for_stat(obj):
 
 
 def setup_stat_figure(labels):
-    """Creates the statistical comparison figure and initializes the radio buttons."""
+    """
+    Creates the statistical comparison figure and initializes the radio buttons.
+    CRITICAL FIX: Includes a close_event handler to reset stat_fig upon closing.
+    """
     global stat_fig, stat_axes
 
     if stat_fig:
@@ -296,6 +296,17 @@ def setup_stat_figure(labels):
         return
 
     stat_fig = plt.figure(figsize=(15, 8))
+
+    # --- FIX 1: Add a close-event handler to reset the figure reference ---
+    def handle_close(event):
+        """Reset the global figure reference when the window is closed."""
+        global stat_fig
+        print("Statistic figure closed. Will re-create on next click.")
+        stat_fig = None
+
+    stat_fig.canvas.mpl_connect('close_event', handle_close)
+    # ---------------------------------------------------------------------
+
     gs = stat_fig.add_gridspec(3, 5, width_ratios=[1, 1, 1, 0.8, 0.8],
                                height_ratios=[1, 1, 0])
 
@@ -318,7 +329,6 @@ def setup_stat_figure(labels):
     stat_axes['objects'] = None
 
     # === Radio Button Callbacks (Defined to use the global stat_axes state) ===
-
     def change_norm(label):
         # *** CRITICAL FIX: Update the global state variable
         stat_axes['current_norm'][0] = label
@@ -417,7 +427,10 @@ def update_stat_plots():
 
 
 def show_stat_calc(event):
-    """Event handler for the 'Statistic calculation' button."""
+    """
+    Event handler for the 'Statistic calculation' button.
+    CRITICAL FIX: Removed stat_fig.show() to prevent TclError.
+    """
     global stat_fig, stat_axes
 
     if len(object1) == 0 or len(object2) == 0:
@@ -427,19 +440,21 @@ def show_stat_calc(event):
     objects = [object1, object2]
     labels = ["Object 1", "Object 2"]
 
-    # 1. Setup figure if it doesn't exist (CRITICAL for widget initialization)
+    # 1. Setup figure if it doesn't exist (or if it was closed and reset to None)
+    # This also brings the figure to the front if it already exists.
     setup_stat_figure(labels)
 
     # 2. Update global state for statistical plots
     stat_axes['objects'] = objects
     stat_axes['labels'] = labels
 
-    # 3. Update the plots based on the new data
+    # 3. Update the plots based on the new data (this calls stat_fig.canvas.draw_idle())
     update_stat_plots()
 
-    # 4. Bring the figure to the front
+    # 4. Bring the figure to the front (Necessary if update_stat_plots didn't already focus it)
+    # Use plt.figure() to ensure focus without trying to re-start the GUI manager
     plt.figure(stat_fig.number)
-    stat_fig.show()
+    print("✨ Displaying/updating statistical comparison figure.")
 
 
 # --- MAIN FIGURE AND WIDGETS ---
