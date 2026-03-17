@@ -12,7 +12,7 @@ def main():
     print("=" * 60)
 
     # --- CONFIGURATION ---
-    vnir_filepath = r"C:\Users\Public\HyperData\BEIT_JAMAL\40m_try\vnir\raw_76000_rd_rf.hdr"
+    vnir_filepath = r"C:\Users\hyper laptop\PycharmProjects\Hyper\data\abu-airport-1.mat"
     swir_filepath = None
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

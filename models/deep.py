@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+from tqdm import tqdm
 from .base import BaseDetector
 
 class _SpectralAutoencoderNN(nn.Module):
@@ -33,6 +34,7 @@ class AutoencoderDetector(BaseDetector):
         H, W, B = cube.shape
         X_flat = cube.reshape(-1, B)
 
+        # Sample 10% of the image for fast background memorization
         num_samples = int(H * W * 0.1)
         indices = np.random.choice(H * W, num_samples, replace=False)
         train_data = torch.tensor(X_flat[indices], dtype=torch.float32, device=self.device)
@@ -44,13 +46,24 @@ class AutoencoderDetector(BaseDetector):
         dataset = torch.utils.data.TensorDataset(train_data)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
-        for _ in range(self.epochs):
+        pbar = tqdm(range(self.epochs), desc="Training Epochs", leave=False, bar_format="{l_bar}{bar:30}{r_bar}")
+
+        for epoch in pbar:
+            epoch_loss = 0.0
             for batch in dataloader:
                 optimizer.zero_grad()
                 reconstructed = model(batch[0])
                 loss = F.mse_loss(reconstructed, batch[0])
                 loss.backward()
                 optimizer.step()
+                epoch_loss += loss.item()
+
+            # Update the progress bar suffix to show the falling loss
+            avg_loss = epoch_loss / len(dataloader)
+            pbar.set_postfix({'MSE Loss': f"{avg_loss:.5f}"})
+
+        pbar.close()
+        # ---------------------------------------------------------
 
         model.eval()
         X_tensor = torch.tensor(X_flat, dtype=torch.float32, device=self.device)
