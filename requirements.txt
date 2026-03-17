@@ -1,6 +1,10 @@
-spectral
 numpy
-matplotlib
 scipy
+spectral
 scikit-learn
+torch
+opencv-python
+matplotlib
+tqdm
+h5py
 requests
