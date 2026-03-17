@@ -12,7 +12,6 @@ class ManualSpectralInspector:
         self.rgb_img = rgb_img
         self.wavelengths = wavelengths
 
-        # Instance State (Replaces Globals)
         self.colors = plt.cm.tab10(np.linspace(0, 1, 10))
         self.points = []
         self.color_idx = 0
@@ -28,17 +27,18 @@ class ManualSpectralInspector:
         self.stat_axes = {}
 
     def launch(self):
-        self.fig, (self.ax_img, self.ax_spec) = plt.subplots(1, 2, figsize=(13, 7))
+        # OPTIMIZED: Compact aspect ratio for left-half screen docking
+        self.fig, (self.ax_img, self.ax_spec) = plt.subplots(1, 2, figsize=(10, 5.5))
         self.fig.canvas.manager.set_window_title("Manual Spectral Inspector")
-        plt.subplots_adjust(bottom=0.15)
+        self.fig.subplots_adjust(bottom=0.20, wspace=0.25)
 
         self.ax_img.imshow(self.rgb_img)
-        self.ax_img.set_title("Shift+Left Click = Add | Right Click = Select/Move")
+        self.ax_img.set_title("Shift+Left Click = Add | Right Click = Select/Move", fontsize=10)
         self.ax_img.axis("off")
 
-        self.ax_spec.set_title("Reflectance Spectra")
-        self.ax_spec.set_xlabel("Wavelength (nm)")
-        self.ax_spec.set_ylabel("Reflectance")
+        self.ax_spec.set_title("Reflectance Spectra", fontsize=11)
+        self.ax_spec.set_xlabel("Wavelength (nm)", fontsize=9)
+        self.ax_spec.set_ylabel("Reflectance", fontsize=9)
         self.ax_spec.grid(True)
 
         self.tooltip = self.ax_img.annotate("", xy=(0, 0), xytext=(10, 10), textcoords="offset points",
@@ -46,14 +46,14 @@ class ManualSpectralInspector:
                                             arrowprops=dict(arrowstyle="->"))
         self.tooltip.set_visible(False)
 
-        # Buttons
-        self.btn_obj1 = Button(plt.axes([0.20, 0.03, 0.15, 0.05]), "Save Object 1 & Clear")
+        # OPTIMIZED: Respaced buttons to fit the new tighter window
+        self.btn_obj1 = Button(plt.axes([0.05, 0.05, 0.25, 0.06]), "Save Obj 1 & Clear")
         self.btn_obj1.on_clicked(lambda e: self._take_object(e, 1))
 
-        self.btn_stat = Button(plt.axes([0.40, 0.03, 0.15, 0.05]), "Calculate Statistics")
+        self.btn_stat = Button(plt.axes([0.375, 0.05, 0.25, 0.06]), "Calc Statistics")
         self.btn_stat.on_clicked(self._show_stat_calc)
 
-        self.btn_obj2 = Button(plt.axes([0.60, 0.03, 0.15, 0.05]), "Save Object 2 & Clear")
+        self.btn_obj2 = Button(plt.axes([0.70, 0.05, 0.25, 0.06]), "Save Obj 2 & Clear")
         self.btn_obj2.on_clicked(lambda e: self._take_object(e, 2))
 
         self.fig.canvas.mpl_connect('button_press_event', self._onclick)
@@ -80,7 +80,7 @@ class ManualSpectralInspector:
         line, = self.ax_spec.plot(self.wavelengths, spectrum, color=color, label=f"({x},{y})")
         marker, = self.ax_img.plot([x], [y], 'o', color=color, markersize=6, markeredgecolor='white')
         self.points.append({'x': x, 'y': y, 'marker': marker, 'line': line, 'color': color})
-        self.ax_spec.legend(title="Pixel (x,y)", loc='upper right')
+        self.ax_spec.legend(title="Pixel (x,y)", loc='upper right', fontsize=8)
         self.fig.canvas.draw_idle()
 
     def _take_object(self, event, target):
@@ -130,7 +130,7 @@ class ManualSpectralInspector:
             p['marker'].set_data([x], [y])
             p['line'].set_ydata(np.squeeze(self.cube[y, x, :]))
             p['line'].set_label(f"({x},{y})")
-            self.ax_spec.legend(title="Pixel (x,y)", loc='upper right')
+            self.ax_spec.legend(title="Pixel (x,y)", loc='upper right', fontsize=8)
             self.tooltip.set_visible(False)
             self.selected_point = None
             self.fig.canvas.draw_idle()
@@ -150,6 +150,7 @@ class ManualSpectralInspector:
 
         if not self.stat_fig:
             self.stat_fig = plt.figure(figsize=(15, 8))
+            self.stat_fig.canvas.manager.set_window_title("Statistical Comparison")
             gs = self.stat_fig.add_gridspec(3, 5, width_ratios=[1, 1, 1, 0.8, 0.8], height_ratios=[1, 1, 0])
             self.stat_axes = {
                 'ax1': self.stat_fig.add_subplot(gs[0:2, 0]), 'ax2': self.stat_fig.add_subplot(gs[0:2, 1]),
@@ -185,14 +186,14 @@ class ManualSpectralInspector:
             for spec in data: ax.plot(self.wavelengths, spec, color=color, alpha=0.4, lw=0.8)
             ax.plot(self.wavelengths, m, color=f'dark{color}' if color == 'orange' else 'navy', lw=2.2)
             ax.fill_between(self.wavelengths, m - s, m + s, color=color, alpha=0.2)
-            ax.set_title(f"{title} ({norm_mode})");
+            ax.set_title(f"{title} ({norm_mode})", fontsize=10);
             ax.grid(True)
 
         ax3.cla()
         ax3.plot(self.wavelengths, mA, color='darkorange', label="Obj 1 Mean")
         ax3.plot(self.wavelengths, mB, color='navy', label="Obj 2 Mean")
-        ax3.set_title("Comparison");
-        ax3.legend();
+        ax3.set_title("Comparison", fontsize=10);
+        ax3.legend(fontsize=8);
         ax3.grid(True)
 
         metrics = SpectralMetrics.compute_metrics(mA, mB)
@@ -200,5 +201,6 @@ class ManualSpectralInspector:
         ax_met.axis("off")
         txt = metrics.get("error",
                           f"SAM: {metrics['SAM']:.2f}°\nSID: {metrics['SID']:.4f}\nCorr: {metrics['Corr']:.3f}\nEuc: {metrics['Euclid']:.3f}")
-        ax_met.text(0.05, 0.95, txt, va="top", ha="left", bbox=dict(boxstyle="round", fc="khaki", alpha=0.7))
+        ax_met.text(0.05, 0.95, txt, va="top", ha="left", fontsize=10,
+                    bbox=dict(boxstyle="round", fc="khaki", alpha=0.7))
         self.stat_fig.canvas.draw_idle()

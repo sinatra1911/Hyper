@@ -1,7 +1,7 @@
 import torch
 from core.data_loader import HyperspectralLoader
 from core.semantics import SemanticSuppressor
-from models.classical import IForestDetector, OSPDetector, LocalRXDetector
+from models.classical import *
 from models.deep import AutoencoderDetector
 from execution.engine import PipelineEngine
 
@@ -12,7 +12,7 @@ def main():
     print("=" * 60)
 
     # --- CONFIGURATION ---
-    vnir_filepath = r"C:\Users\hyper laptop\PycharmProjects\Hyper\data\abu-airport-1.mat"
+    vnir_filepath = r"C:\Users\Public\HyperData\ADERET\100m\raw_7024_rd_rf.hdr"
     swir_filepath = None
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -27,7 +27,7 @@ def main():
     detectors = [
         AutoencoderDetector(epochs=100, device=device),
         OSPDetector(k_endmembers=15, device=device),
-        LocalRXDetector(device=device)
+        IForestDetector(n_components=10)
     ]
     engine = PipelineEngine(detectors)
 

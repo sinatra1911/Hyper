@@ -1,3 +1,4 @@
+# visualization/automated_dash.py
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
@@ -19,17 +20,21 @@ class InteractiveDashboard:
         self.num_algos = len(heatmaps_dict)
         total_panels = self.num_algos + 2
 
-        self.fig = plt.figure(figsize=(4 * total_panels, 7))
-        self.fig.canvas.manager.set_window_title(f"Results: {modality_name}")
-        self.fig.subplots_adjust(bottom=0.25, top=0.9, wspace=0.15)
+        # 1. OPTIMIZED SIZE: Wider figure, taller height to let images breathe
+        self.fig = plt.figure(figsize=(16, 6.5))
+        self.fig.canvas.manager.set_window_title(f"Automated AI Dashboard: {modality_name}")
+
+        # 2. OPTIMIZED MARGINS: wspace=0.05 eliminates empty gaps, forcing images to grow larger
+        self.fig.subplots_adjust(left=0.02, right=0.98, bottom=0.25, top=0.90, wspace=0.05)
         gs = self.fig.add_gridspec(1, total_panels)
 
         self.axes, self.sliders, self.heatmap_imgs = [], [], []
         self.heatmaps_data = list(heatmaps_dict.values())
 
+        # Panel 1: Original
         ax_orig = self.fig.add_subplot(gs[0])
         ax_orig.imshow(scene_img)
-        ax_orig.set_title("Original Scene", fontsize=12, fontweight='bold')
+        ax_orig.set_title("Original Scene", fontsize=11, fontweight='bold')
         ax_orig.axis('off')
         self.axes.append(ax_orig)
 
@@ -37,13 +42,19 @@ class InteractiveDashboard:
         for name, heatmap in heatmaps_dict.items():
             ax = self.fig.add_subplot(gs[idx], sharex=self.axes[0], sharey=self.axes[0])
             img = ax.imshow(np.clip(heatmap, 0, np.percentile(heatmap, 95.0)), cmap='turbo')
-            ax.set_title(name, fontsize=12, fontweight='bold')
+            ax.set_title(name, fontsize=11, fontweight='bold')
             ax.axis('off')
             self.axes.append(ax)
             self.heatmap_imgs.append(img)
 
-            ax_sld = self.fig.add_axes([0.1 + (idx * 0.8 / total_panels), 0.1, 0.6 / total_panels, 0.03])
-            sld = Slider(ax_sld, 'Thresh %', 80.0, 99.99, valinit=95.0, valstep=0.1)
+            # 3. OPTIMIZED SLIDERS: Mathematically center them and shrink the track width
+            # This guarantees the text label ("Thr %") has room on the left side to exist without overlapping.
+            slider_width = 0.08
+            center_x = (idx + 0.5) / total_panels
+            left_pos = center_x - (slider_width / 2)
+
+            ax_sld = self.fig.add_axes([left_pos, 0.10, slider_width, 0.03])
+            sld = Slider(ax_sld, 'Thr %', 80.0, 99.99, valinit=95.0, valstep=0.1)
 
             def make_update(i_obj, data):
                 def update(val):
@@ -58,16 +69,21 @@ class InteractiveDashboard:
             self.sliders.append(sld)
             idx += 1
 
+        # Panel Final: Detections
         self.ax_det = self.fig.add_subplot(gs[idx], sharex=self.axes[0], sharey=self.axes[0])
         self.ax_det.imshow(scene_img)
         self.det_img = self.ax_det.imshow(np.zeros((scene_img.shape[0], scene_img.shape[1], 4)))
-        self.ax_det.set_title("Voting Detections", fontsize=12, fontweight='bold')
+        self.ax_det.set_title("Voting Detections", fontsize=11, fontweight='bold')
         self.ax_det.axis('off')
         self.axes.append(self.ax_det)
 
-        ax_vote = self.fig.add_axes([0.1 + (idx * 0.8 / total_panels), 0.1, 0.6 / total_panels, 0.03])
-        self.slider_vote = Slider(ax_vote, 'Required Votes', 1, self.num_algos, valinit=max(1, self.num_algos - 1),
-                                  valstep=1)
+        # Voting Slider Alignment
+        slider_width = 0.08
+        center_x = (idx + 0.5) / total_panels
+        left_pos = center_x - (slider_width / 2)
+
+        ax_vote = self.fig.add_axes([left_pos, 0.10, slider_width, 0.03])
+        self.slider_vote = Slider(ax_vote, 'Votes', 1, self.num_algos, valinit=max(1, self.num_algos - 1), valstep=1)
         self.slider_vote.on_changed(lambda val: self.update_fusion())
         self.sliders.append(self.slider_vote)
 
