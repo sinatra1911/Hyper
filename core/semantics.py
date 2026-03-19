@@ -3,16 +3,23 @@ from sklearn.decomposition import PCA
 
 class SemanticSuppressor:
     @staticmethod
-    def compute_weights(cube, vnir_raw, red_idx, nir_idx):
+    def compute_weights(cube, raw_primary, red_idx, nir_idx):
         print("  ➤ Computing Soft Semantic Background Weights...")
         H, W, B = cube.shape
 
-        ndvi = (vnir_raw[:, :, nir_idx] - vnir_raw[:, :, red_idx]) / (vnir_raw[:, :, nir_idx] + vnir_raw[:, :, red_idx] + 1e-8)
-        veg_score = np.clip((ndvi - 0.15) / 0.4, 0, 1)
+        # Bypass vegetation masking safely if valid VNIR indices aren't present
+        if red_idx != nir_idx and raw_primary.shape[2] > max(red_idx, nir_idx):
+            nir_band = raw_primary[:, :, nir_idx]
+            red_band = raw_primary[:, :, red_idx]
+            ndvi = (nir_band - red_band) / (nir_band + red_band + 1e-8)
+            veg_score = np.clip((ndvi - 0.15) / 0.4, 0, 1)
+        else:
+            veg_score = np.zeros((H, W), dtype=np.float32)
 
         X = cube.reshape(-1, B)
-        X_pca = PCA(n_components=5).fit_transform(X)
-        X_recon = PCA(n_components=5).fit(X).inverse_transform(X_pca)
+        n_comp = min(5, B) # Safegaurd for cubes with very few bands
+        X_pca = PCA(n_components=n_comp).fit_transform(X)
+        X_recon = PCA(n_components=n_comp).fit(X).inverse_transform(X_pca)
 
         res = np.linalg.norm(X - X_recon, axis=1).reshape(H, W)
         res_norm = (res - res.min()) / (res.max() - res.min() + 1e-8)

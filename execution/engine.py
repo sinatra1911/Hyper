@@ -1,4 +1,3 @@
-# execution/engine.py
 import matplotlib.pyplot as plt
 from typing import List
 from models.base import BaseDetector
@@ -26,10 +25,10 @@ class PipelineEngine:
         db = InteractiveDashboard(rgb_bg, heatmaps, name)
         self.dashboards.append(db)
 
-    def run_manual_inspector(self, cube, rgb_bg, wavelengths):
-        if cube is None: return
+    def run_manual_inspector(self, raw_cube, rgb_bg, wavelengths, split_idx=None):
+        if raw_cube is None: return
         print(f"\n[Manual Tool] Launching Interactive Spectral Inspector...")
-        inspector = ManualSpectralInspector(cube, rgb_bg, wavelengths)
+        inspector = ManualSpectralInspector(raw_cube, rgb_bg, wavelengths, split_idx)
         inspector.launch()
         self.inspectors.append(inspector)
 

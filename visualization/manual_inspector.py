@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, RadioButtons
 from core.metrics import SpectralMetrics
 
-class ManualSpectralInspector:
-    """OOP implementation of the interactive manual anomaly inspector."""
 
-    def __init__(self, cube, rgb_img, wavelengths):
+class ManualSpectralInspector:
+    def __init__(self, cube, rgb_img, wavelengths, split_idx=None):
         self.cube = cube
         self.rgb_img = rgb_img
         self.wavelengths = wavelengths
+        self.split_idx = split_idx
 
         self.colors = plt.cm.tab10(np.linspace(0, 1, 10))
         self.points = []
@@ -22,18 +22,31 @@ class ManualSpectralInspector:
 
         self.object1 = []
         self.object2 = []
-
+        self.leg_map = {}
         self.stat_fig = None
         self.stat_axes = {}
 
+        # NEW: Identify the shifted "dead zones" where SWIR is padded with zeros
+        if self.split_idx is not None and self.split_idx < self.cube.shape[2]:
+            swir_sum = np.sum(np.abs(self.cube[:, :, self.split_idx:]), axis=-1)
+            self.invalid_swir_mask = (swir_sum == 0)
+        else:
+            self.invalid_swir_mask = np.zeros((self.cube.shape[0], self.cube.shape[1]), dtype=bool)
+
     def launch(self):
-        # OPTIMIZED: Compact aspect ratio for left-half screen docking
         self.fig, (self.ax_img, self.ax_spec) = plt.subplots(1, 2, figsize=(10, 5.5))
         self.fig.canvas.manager.set_window_title("Manual Spectral Inspector")
         self.fig.subplots_adjust(bottom=0.20, wspace=0.25)
 
         self.ax_img.imshow(self.rgb_img)
-        self.ax_img.set_title("Shift+Left Click = Add | Right Click = Select/Move", fontsize=10)
+
+        # NEW: Overlay a faint 30% red tint over areas that are missing SWIR data due to alignment
+        if np.any(self.invalid_swir_mask):
+            overlay = np.zeros((*self.invalid_swir_mask.shape, 4))
+            overlay[self.invalid_swir_mask] = [1, 0, 0, 0.3]
+            self.ax_img.imshow(overlay)
+
+        self.ax_img.set_title("Shift+Left Click = Add | Right Click = Move", fontsize=10)
         self.ax_img.axis("off")
 
         self.ax_spec.set_title("Reflectance Spectra", fontsize=11)
@@ -46,18 +59,26 @@ class ManualSpectralInspector:
                                             arrowprops=dict(arrowstyle="->"))
         self.tooltip.set_visible(False)
 
-        # OPTIMIZED: Respaced buttons to fit the new tighter window
         self.btn_obj1 = Button(plt.axes([0.05, 0.05, 0.25, 0.06]), "Save Obj 1 & Clear")
         self.btn_obj1.on_clicked(lambda e: self._take_object(e, 1))
-
         self.btn_stat = Button(plt.axes([0.375, 0.05, 0.25, 0.06]), "Calc Statistics")
         self.btn_stat.on_clicked(self._show_stat_calc)
-
         self.btn_obj2 = Button(plt.axes([0.70, 0.05, 0.25, 0.06]), "Save Obj 2 & Clear")
         self.btn_obj2.on_clicked(lambda e: self._take_object(e, 2))
 
         self.fig.canvas.mpl_connect('button_press_event', self._onclick)
+        self.fig.canvas.mpl_connect('pick_event', self._onpick)  # NEW: Interactive Legend Listener
         plt.show(block=False)
+
+    def _onpick(self, event):
+        """NEW: Toggles line visibility when its legend entry is clicked."""
+        legline = event.artist
+        origline = self.leg_map.get(legline)
+        if origline:
+            vis = not origline.get_visible()
+            origline.set_visible(vis)
+            legline.set_alpha(1.0 if vis else 0.2)
+            self.fig.canvas.draw_idle()
 
     def _get_gui_shift(self, event):
         if getattr(event, "key", None): return 'shift' in event.key
@@ -77,11 +98,38 @@ class ManualSpectralInspector:
         self.color_idx += 1
 
         spectrum = np.squeeze(self.cube[y, x, :])
-        line, = self.ax_spec.plot(self.wavelengths, spectrum, color=color, label=f"({x},{y})")
+
+        # -------------------------------------------------------------
+        # NEW: Line Separation & Invalid SWIR Handling (Without modifying raw arrays)
+        # -------------------------------------------------------------
+        wl_plot = np.copy(self.wavelengths)
+        spec_plot = np.copy(spectrum)
+
+        if self.split_idx is not None and self.split_idx < len(self.wavelengths):
+            if self.invalid_swir_mask[y, x]:
+                # User clicked in the Red Zone -> SWIR is fake padding, truncate it to VNIR only
+                wl_plot, spec_plot = wl_plot[:self.split_idx], spec_plot[:self.split_idx]
+            else:
+                # User clicked Valid Zone -> Insert NaN to visually break the overlapping line
+                wl_plot = np.insert(wl_plot, self.split_idx, np.nan)
+                spec_plot = np.insert(spec_plot, self.split_idx, np.nan)
+        # -------------------------------------------------------------
+
+        line, = self.ax_spec.plot(wl_plot, spec_plot, color=color, label=f"({x},{y})")
         marker, = self.ax_img.plot([x], [y], 'o', color=color, markersize=6, markeredgecolor='white')
         self.points.append({'x': x, 'y': y, 'marker': marker, 'line': line, 'color': color})
-        self.ax_spec.legend(title="Pixel (x,y)", loc='upper right', fontsize=8)
+
+        # Refresh Interactive Legend mapping
+        leg = self.ax_spec.legend(title="Pixel (x,y)", loc='upper right', fontsize=8)
+        self.leg_map = {}
+        for legline, origline in zip(leg.get_lines(), self.ax_spec.lines):
+            legline.set_picker(True)
+            legline.set_pickradius(5)
+            self.leg_map[legline] = origline
+
         self.fig.canvas.draw_idle()
+
+    # ... (Keep _take_object, _clear_points, _onclick, _collect_spectra, _show_stat_calc, _update_stat_plots exactly as they were) ...
 
     def _take_object(self, event, target):
         current_data = [{'x': p['x'], 'y': p['y']} for p in self.points]
@@ -128,9 +176,25 @@ class ManualSpectralInspector:
             p = self.selected_point
             p['x'], p['y'] = x, y
             p['marker'].set_data([x], [y])
-            p['line'].set_ydata(np.squeeze(self.cube[y, x, :]))
+
+            wl_plot, spec_plot = np.copy(self.wavelengths), np.squeeze(self.cube[y, x, :])
+            if self.split_idx is not None and self.split_idx < len(self.wavelengths):
+                if self.invalid_swir_mask[y, x]:
+                    wl_plot, spec_plot = wl_plot[:self.split_idx], spec_plot[:self.split_idx]
+                else:
+                    wl_plot, spec_plot = np.insert(wl_plot, self.split_idx, np.nan), np.insert(spec_plot,
+                                                                                               self.split_idx, np.nan)
+
+            p['line'].set_data(wl_plot, spec_plot)
             p['line'].set_label(f"({x},{y})")
-            self.ax_spec.legend(title="Pixel (x,y)", loc='upper right', fontsize=8)
+
+            leg = self.ax_spec.legend(title="Pixel (x,y)", loc='upper right', fontsize=8)
+            self.leg_map = {}
+            for legline, origline in zip(leg.get_lines(), self.ax_spec.lines):
+                legline.set_picker(True)
+                legline.set_pickradius(5)
+                self.leg_map[legline] = origline
+
             self.tooltip.set_visible(False)
             self.selected_point = None
             self.fig.canvas.draw_idle()
@@ -183,15 +247,29 @@ class ManualSpectralInspector:
         for ax, data, m, s, color, title in zip([ax1, ax2], [A_norm, B_norm], [mA, mB], [sA, sB], ['orange', 'blue'],
                                                 ["Object 1", "Object 2"]):
             ax.cla()
-            for spec in data: ax.plot(self.wavelengths, spec, color=color, alpha=0.4, lw=0.8)
-            ax.plot(self.wavelengths, m, color=f'dark{color}' if color == 'orange' else 'navy', lw=2.2)
-            ax.fill_between(self.wavelengths, m - s, m + s, color=color, alpha=0.2)
+            # Insert NaNs into stats view if Fused Cube so it breaks here too!
+            wl_p = np.insert(self.wavelengths, self.split_idx, np.nan) if self.split_idx and self.split_idx < len(
+                self.wavelengths) else self.wavelengths
+            for spec in data:
+                sp_p = np.insert(spec, self.split_idx, np.nan) if self.split_idx and self.split_idx < len(
+                    self.wavelengths) else spec
+                ax.plot(wl_p, sp_p, color=color, alpha=0.4, lw=0.8)
+
+            mp = np.insert(m, self.split_idx, np.nan) if self.split_idx and self.split_idx < len(
+                self.wavelengths) else m
+            sp = np.insert(s, self.split_idx, np.nan) if self.split_idx and self.split_idx < len(
+                self.wavelengths) else s
+
+            ax.plot(wl_p, mp, color=f'dark{color}' if color == 'orange' else 'navy', lw=2.2)
+            ax.fill_between(wl_p, mp - sp, mp + sp, color=color, alpha=0.2)
             ax.set_title(f"{title} ({norm_mode})", fontsize=10);
             ax.grid(True)
 
         ax3.cla()
-        ax3.plot(self.wavelengths, mA, color='darkorange', label="Obj 1 Mean")
-        ax3.plot(self.wavelengths, mB, color='navy', label="Obj 2 Mean")
+        ax3.plot(wl_p, np.insert(mA, self.split_idx, np.nan) if self.split_idx and self.split_idx < len(
+            self.wavelengths) else mA, color='darkorange', label="Obj 1 Mean")
+        ax3.plot(wl_p, np.insert(mB, self.split_idx, np.nan) if self.split_idx and self.split_idx < len(
+            self.wavelengths) else mB, color='navy', label="Obj 2 Mean")
         ax3.set_title("Comparison", fontsize=10);
         ax3.legend(fontsize=8);
         ax3.grid(True)
