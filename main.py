@@ -1,7 +1,7 @@
 import torch
 from core.data_loader import HyperspectralLoader
 from core.semantics import SemanticSuppressor
-from models.classical import OSPDetector, LocalRXDetector
+from models.classical import *
 from models.deep import *
 from execution.engine import PipelineEngine
 
@@ -25,9 +25,7 @@ def main():
 
     # --- 2. INITIALIZE ENGINE ---
     detectors = [
-        OSPDetector(k_endmembers=15, device=device),
-        LocalRXDetector(device=device),
-        AutoencoderDetector(device=device),
+        CBADDetector(n_clusters=6, device=device)
     ]
     engine = PipelineEngine(detectors)
 

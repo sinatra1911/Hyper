@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from sklearn.decomposition import PCA
 from sklearn.ensemble import IsolationForest
+from sklearn.cluster import MiniBatchKMeans
 from .base import BaseDetector
 
 
@@ -109,3 +110,54 @@ class LocalRXDetector(BaseDetector):
 
         local_map = rx_scores.view(H, W).cpu().numpy()
         return (local_map - local_map.min()) / (local_map.max() - local_map.min() + 1e-8)
+
+class CBADDetector(BaseDetector):
+    """
+    Cluster-Based Anomaly Detection (CBAD).
+    Groups the image into semantic natural clusters first, completely eliminating
+    false positives from natural background variations like scattered rocks.
+    """
+
+    def __init__(self, n_clusters=5, n_components=10, device='cuda'):
+        super().__init__("Cluster-Based RX (CBAD)")
+        self.n_clusters = n_clusters
+        self.n_components = n_components
+        self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
+
+    def detect(self, cube: np.ndarray) -> np.ndarray:
+        print(f"  ➤ Running {self.name} (Suppressing Natural Clusters)...")
+        H, W, B = cube.shape
+        X_flat = cube.reshape(-1, B)
+
+        # 1. Dimensionality Reduction for Stability
+        pca = PCA(n_components=self.n_components)
+        X_pca = pca.fit_transform(X_flat)
+
+        # 2. Unsupervised Semantic Clustering (Groups all rocks together, all dirt together)
+        kmeans = MiniBatchKMeans(n_clusters=self.n_clusters, random_state=42, batch_size=2048, n_init='auto')
+        labels = kmeans.fit_predict(X_pca)
+
+        # 3. Calculate Anomaly Score relative to the pixel's OWN cluster
+        X_tensor = torch.tensor(X_pca, dtype=torch.float32, device=self.device)
+        labels_tensor = torch.tensor(labels, device=self.device)
+        anomaly_scores = torch.zeros(H * W, device=self.device)
+
+        for k in range(self.n_clusters):
+            cluster_mask = (labels_tensor == k)
+            cluster_pixels = X_tensor[cluster_mask]
+
+            if len(cluster_pixels) > self.n_components + 1:
+                mu = torch.mean(cluster_pixels, dim=0, keepdim=True)
+                centered = cluster_pixels - mu
+
+                # Covariance of just this specific background type (e.g., just the rocks)
+                cov = torch.matmul(centered.T, centered) / (len(cluster_pixels) - 1)
+                cov += torch.eye(self.n_components, device=self.device) * 1e-4
+                cov_inv = torch.linalg.inv(cov)
+
+                # Distance from the cluster average
+                dist = torch.sum(torch.matmul(centered, cov_inv) * centered, dim=1)
+                anomaly_scores[cluster_mask] = dist
+
+        map_2d = anomaly_scores.view(H, W).cpu().numpy()
+        return (map_2d - np.min(map_2d)) / (np.max(map_2d) - np.min(map_2d) + 1e-8)
