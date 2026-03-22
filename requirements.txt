@@ -3,6 +3,7 @@ scipy
 spectral
 scikit-learn
 torch
+#pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 opencv-python
 matplotlib
 tqdm
